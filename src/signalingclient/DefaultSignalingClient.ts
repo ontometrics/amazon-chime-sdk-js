@@ -290,6 +290,7 @@ export default class DefaultSignalingClient implements SignalingClient {
     this.isClosing = false;
     this.webSocket.create(request.url(), request.protocols());
     this.setUpEventListeners();
+    this.listenForCSPViolations();
     this.sendEvent(
       new SignalingClientEvent(this, SignalingClientEventType.WebSocketConnecting, null)
     );
@@ -362,6 +363,30 @@ export default class DefaultSignalingClient implements SignalingClient {
           new SignalingClientEvent(this, SignalingClientEventType.WebSocketFailed, null)
         );
       }
+    });
+  }
+
+  private listenForCSPViolations(): void {
+    /* istanbul ignore else */
+    if (
+      !('window' in global) ||
+      !window.addEventListener ||
+      !('document' in global) ||
+      !document.addEventListener
+    ) {
+      return;
+    }
+    /* istanbul ignore next */
+    document.addEventListener('securitypolicyviolation', (e: SecurityPolicyViolationEvent) => {
+      this.logger.error(
+        'Security Policy Violation\n' +
+          `Blocked uri: ${e.blockedURI}\n` +
+          `Violated directive: ${e.violatedDirective}\n` +
+          `Original policy: ${e.originalPolicy}\n` +
+          `Document URI: ${e.documentURI}\n` +
+          `Source file: ${e.sourceFile}\n` +
+          `Line No.: ${e.lineNumber}\n`
+      );
     });
   }
 
