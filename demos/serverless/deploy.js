@@ -223,25 +223,27 @@ function ensureTools() {
 
 function createCaptureS3Buckets(bucketPrefix, regions) {
   console.log(`Creating S3 buckets for media capture pipelines artifacts.  Bucket prefix: ${bucketPrefix} Regions:[${regions}]`);
-  const lifecycleConfiguration = JSON.stringify({
-    "Rules": [{
-      "ID": "Delete artifacts after 1 day",
-      "Expiration": {"Days": 1},
-      "Status": "Enabled",
-      "Prefix": "",
-    }]
-  });
-  fs.writeFileSync('build/lifecycle_configuration.json', lifecycleConfiguration, {encoding: 'utf8', flag: 'w'});
+  // const lifecycleConfiguration = JSON.stringify({
+  //   "Rules": [{
+  //     "ID": "Delete artifacts after 1 day",
+  //     "Expiration": {"Days": 1},
+  //     "Status": "Enabled",
+  //     "Prefix": "",
+  //   }]
+  // });
+  // fs.writeFileSync('build/lifecycle_configuration.json', lifecycleConfiguration, {encoding: 'utf8', flag: 'w'});
   for (bucketRegion of regions) {
     const bucketName = `${bucketPrefix}-${bucketRegion}`;
     const bucketPolicy = JSON.stringify({
-      "Id": "Policy1625687208360",
+      "Id": "AWSChimeMediaCaptureBucketPolicy",
       "Version": "2012-10-17",
       "Statement": [{
-        "Sid": "Stmt1625687206729",
+        "Sid": "AWSChimeMediaCaptureBucketPolicy",
         "Action": [
           "s3:PutObject",
-          "s3:PutObjectAcl"
+          "s3:PutObjectAcl",
+          "s3:GetObject",
+          "s3:ListBucket"
         ],
         "Effect": "Allow",
         "Resource": `arn:aws:s3:::${bucketName}/*`,
@@ -263,7 +265,7 @@ function createCaptureS3Buckets(bucketPrefix, regions) {
         spawnOrFail('aws', ['s3api', 'create-bucket', '--bucket', bucketName, '--region', bucketRegion, '--create-bucket-configuration', `LocationConstraint=${bucketRegion}`], null, !disablePrintingLogs);
       }
       spawnOrFail('aws', ['s3api', 'put-bucket-policy', '--bucket', bucketName, '--region', bucketRegion, '--policy', 'file://build/bucket_policy.json']);
-      spawnOrFail('aws', ['s3api', 'put-bucket-lifecycle-configuration', '--bucket', bucketName, '--region', bucketRegion, '--lifecycle-configuration', 'file://build/lifecycle_configuration.json']);
+      // spawnOrFail('aws', ['s3api', 'put-bucket-lifecycle-configuration', '--bucket', bucketName, '--region', bucketRegion, '--lifecycle-configuration', 'file://build/lifecycle_configuration.json']);
     }
   }
 }

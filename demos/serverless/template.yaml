@@ -101,6 +101,7 @@ Resources:
               - 'chime:StopMeetingTranscription'
               - 'chime:CreateMediaCapturePipeline'
               - 'chime:DeleteMediaCapturePipeline'
+              - 'chime:CreateMediaConcatenationPipeline'
               - 's3:GetBucketPolicy'
               - 's3:GetBucketLocation'
             Resource: '*'

@@ -317,17 +317,43 @@ exports.start_capture = async (event, context) => {
   meetingRegion = meeting.Meeting.MediaRegion;
 
   let captureS3Destination = `arn:aws:s3:::${CAPTURE_S3_DESTINATION_PREFIX}-${meetingRegion}/${meeting.Meeting.MeetingId}/`
-  const request = {
+  const mediaCaptureRequest = {
     SourceType: "ChimeSdkMeeting",
     SourceArn: `arn:aws:chime::${AWS_ACCOUNT_ID}:meeting:${meeting.Meeting.MeetingId}`,
     SinkType: "S3Bucket",
     SinkArn: captureS3Destination,
   };
-  console.log("Creating new media capture pipeline: ", request)
-  pipelineInfo = await getClientForMediaCapturePipelines().createMediaCapturePipeline(request).promise();
+  console.log("Creating new media capture pipeline: ", mediaCaptureRequest)
+  pipelineInfo = await getClientForMediaCapturePipelines().createMediaCapturePipeline(mediaCaptureRequest).promise();
 
   await putCapturePipeline(event.queryStringParameters.title, pipelineInfo)
   console.log("Successfully created media capture pipeline: ", pipelineInfo);
+
+  const mediaConcatenationRequest = {
+    Sinks: [{Type: "S3Bucket", S3BucketSinkConfiguration: {Destination: `${captureS3Destination}processed/`}}],
+    Sources: [
+      {
+        Type: "MediaCapturePipeline",
+        MediaCapturePipelineSourceConfiguration: {
+          MediaPipelineArn: `arn:aws:chime:${meetingRegion}:${AWS_ACCOUNT_ID}:media-pipeline/${pipelineInfo.MediaCapturePipeline.MediaPipelineId}`,
+          ChimeSdkMeetingConfiguration: {
+            ArtifactsConfiguration: {
+              Audio: {State: "Enabled"}, // audio from all attendees, plus the active speaker’s video
+              Video: {State: "Disabled"}, //  content share streams and video streams
+              TranscriptionMessages: {State: "Enabled"},
+              MeetingEvents: {State: "Enabled"},
+              Content: {State: "Disabled"},
+              DataChannel: {State: "Disabled"},
+              CompositedVideo: {State: "Disabled"}
+            }}
+        }}],
+  }
+
+  console.log("Creating new media concatenation pipeline: ", mediaCaptureRequest)
+
+  const pipelineConcatenationInfo = await getClientForMediaCapturePipelines().createMediaConcatenationPipeline(mediaConcatenationRequest).promise()
+
+  console.log("Successfully created media concatenation pipeline: ", pipelineConcatenationInfo);
 
   return response(201, 'application/json', JSON.stringify(pipelineInfo));
 };
@@ -567,7 +593,11 @@ function createLogStreamName(meetingId, attendeeId) {
 function response(statusCode, contentType, body, isBase64Encoded = false) {
   return {
     statusCode: statusCode,
-    headers: { 'Content-Type': contentType },
+    headers: { 'Content-Type': contentType,
+      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+      'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
+      'Access-Control-Allow-Origin': '*'
+    },
     body: body,
     isBase64Encoded,
   };
