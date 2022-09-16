@@ -81,12 +81,11 @@ function usage() {
   console.log(`  --use-chime-sdk-media-pipelines      Flag to switch between chime and chimeSDKMediaPipelines client, default '${useChimeSDKMediaPipelines}'`);
   console.log(`  -h, --help                           Show help and exit`);
 }
-
 function ensureBucket() {
-  const s3Api = spawnSync('aws', ['s3api', 'head-bucket', '--bucket', `${bucket}`, '--region', `${region}`]);
+  const s3Api = spawnSync('aws', ['s3api', 'head-bucket', '--bucket', `${bucket}`, '--region', `${region}`, '--profile', `${profile}`]);
   if (s3Api.status !== 0) {
     console.log(`Creating S3 bucket ${bucket}`);
-    const s3 = spawnSync('aws', ['s3', 'mb', `s3://${bucket}`, '--region', `${region}`]);
+    const s3 = spawnSync('aws', ['s3', 'mb', `s3://${bucket}`, '--region', `${region}`, '--profile', `${profile}`]);
     if (s3.status !== 0) {
       console.log(`Failed to create bucket: ${s3.status}`);
       console.log((s3.stderr || s3.stdout).toString());
@@ -318,12 +317,14 @@ if (!fs.existsSync('build')) {
 }
 
 console.log(`Using region ${region}, controlRegion ${controlRegion}, useChimeSDKMeetings ${useChimeSDKMeetings}, bucket ${bucket}, stack ${stack}, endpoint ${chimeEndpoint}, enable-termination-protection ${enableTerminationProtection}, disable-printing-logs ${disablePrintingLogs} service-principal ${chimeMediaPipelinesServicePrincipal} profile ${profile}`);
-ensureBucket();
 ensureProfile();
+ensureBucket();
 
 // copyAssets();
 // fs.copySync(appHtml(app), 'src/index.html');
+console.log("Building Node Modules")
 spawnOrFail('npm', ['install'], {cwd: path.join(__dirname, 'src')});
+console.log("Deploying sam package")
 spawnOrFail('sam', ['package', '--s3-bucket', `${bucket}`,
                     `--output-template-file`, `build/packaged.yaml`,
                     '--region',  `${region}`, '--profile', `${profile}`]);
