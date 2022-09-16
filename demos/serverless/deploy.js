@@ -9,6 +9,7 @@ let useChimeSDKMeetings = true;
 let bucket = ``;
 let artifactBucket = ``;
 let stack = ``;
+let profile = ``;
 let app = `meetingV2`;
 let useEventBridge = false;
 let enableTerminationProtection = false;
@@ -61,6 +62,7 @@ const supportedMediaPipelinesControlRegions = [
 function usage() {
   console.log(`Usage: deploy.sh [-r region] [-b bucket] [-s stack] [-a application] [-e]`);
   console.log(`  -r, --region                         Stack region, default '${region}'`);
+  console.log(`  --profile                            AWS Profile`);
   console.log(`  -cr, --control-region                Amazon Chime SDK Meetings control region, default '${controlRegion}'`);
   console.log(`  -u, --use-chime-sdk-meetings         Flag to switch between chime and ChimeSDKMeetings client, default '${useChimeSDKMeetings}'`);
   console.log(`  -b, --s3-bucket                      S3 bucket for deployment, required`);
@@ -113,6 +115,9 @@ function parseArgs() {
         break;
       case '-r': case '--region':
         region = getArgOrExit(++i, args)
+        break;
+      case '--profile':
+        profile = getArgOrExit(++i, args)
         break;
       case '-cr': case '--control-region':
         controlRegion = getArgOrExit(++i, args)
@@ -295,25 +300,33 @@ function ensureMediaPipelinesRegion() {
   }
 }
 
+function ensureProfile() {
+  if (profile.length === 0) {
+    console.error("You must specify an aws profile.")
+    process.exit(1);
+  }
+}
+
 parseArgs();
 ensureControlRegion();
 ensureMediaPipelinesRegion();
 ensureTools();
-ensureApp(app);
+// ensureApp(app);
 
 if (!fs.existsSync('build')) {
   fs.mkdirSync('build');
 }
 
-console.log(`Using region ${region}, controlRegion ${controlRegion}, useChimeSDKMeetings ${useChimeSDKMeetings}, bucket ${bucket}, stack ${stack}, endpoint ${chimeEndpoint}, enable-termination-protection ${enableTerminationProtection}, disable-printing-logs ${disablePrintingLogs} service-principal ${chimeMediaPipelinesServicePrincipal}`);
+console.log(`Using region ${region}, controlRegion ${controlRegion}, useChimeSDKMeetings ${useChimeSDKMeetings}, bucket ${bucket}, stack ${stack}, endpoint ${chimeEndpoint}, enable-termination-protection ${enableTerminationProtection}, disable-printing-logs ${disablePrintingLogs} service-principal ${chimeMediaPipelinesServicePrincipal} profile ${profile}`);
 ensureBucket();
+ensureProfile();
 
 // copyAssets();
 // fs.copySync(appHtml(app), 'src/index.html');
 spawnOrFail('npm', ['install'], {cwd: path.join(__dirname, 'src')});
 spawnOrFail('sam', ['package', '--s3-bucket', `${bucket}`,
                     `--output-template-file`, `build/packaged.yaml`,
-                    '--region',  `${region}`]);
+                    '--region',  `${region}`, '--profile', `${profile}`]);
 console.log('Deploying serverless application');
 let parameterOverrides = `ControlRegion=${controlRegion} UseChimeSDKMeetings=${useChimeSDKMeetings} UseEventBridge=${useEventBridge} ChimeEndpoint=${chimeEndpoint} ChimeServicePrincipal=${chimeMediaPipelinesServicePrincipal} ChimeSDKMeetingsEndpoint=${chimeSDKMeetingsEndpoint} ChimeSDKMediaPipelinesEndpoint=${chimeSDKMediaPipelinesEndpoint} UseChimeSDKMediaPipelines=${useChimeSDKMediaPipelines} MediaPipelinesControlRegion=${mediaPipelinesControlRegion}`
 // if (app === 'meetingV2' && captureOutputPrefix) {
@@ -324,12 +337,12 @@ let parameterOverrides = `ControlRegion=${controlRegion} UseChimeSDKMeetings=${u
 // }
 spawnOrFail('sam', ['deploy', '--template-file', './build/packaged.yaml', '--stack-name', `${stack}`,
                     '--parameter-overrides', parameterOverrides,
-                    '--capabilities', 'CAPABILITY_IAM', '--region', `${region}`, '--no-fail-on-empty-changeset'], null, !disablePrintingLogs);
+                    '--capabilities', 'CAPABILITY_IAM', '--region', `${region}`, '--no-fail-on-empty-changeset', '--profile', `${profile}`], null, !disablePrintingLogs);
 if (enableTerminationProtection) {
-  spawnOrFail('aws', ['cloudformation', 'update-termination-protection', '--enable-termination-protection', '--stack-name', `${stack}`, '--region', `${region}`], null, false);
+  spawnOrFail('aws', ['cloudformation', 'update-termination-protection', '--enable-termination-protection', '--stack-name', `${stack}`, '--region', `${region}`, '--profile', `${profile}`], null, false);
 }
 if (!disablePrintingLogs) {
   console.log('Amazon Chime SDK Meeting Demo URL: ');
 }
 const output=spawnOrFail('aws', ['cloudformation', 'describe-stacks', '--stack-name', `${stack}`,
-                    '--query', 'Stacks[0].Outputs[0].OutputValue', '--output', 'text', '--region', `${region}`], null, !disablePrintingLogs);
+                    '--query', 'Stacks[0].Outputs[0].OutputValue', '--output', 'text', '--region', `${region}`, '--profile', `${profile}`], null, !disablePrintingLogs);

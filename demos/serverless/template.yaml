@@ -59,8 +59,6 @@ Globals:
       Variables:
         MEETINGS_TABLE_NAME: !Ref Meetings
         SQS_QUEUE_ARN: !GetAtt MeetingNotificationsQueue.Arn
-        BROWSER_LOG_GROUP_NAME: !Ref ChimeBrowserLogs
-        BROWSER_MEETING_EVENT_LOG_GROUP_NAME: !Ref ChimeBrowserMeetingEventLogs
         CHIME_ENDPOINT: !Ref ChimeEndpoint
         CONTROL_REGION: !Ref ControlRegion
         USE_CHIME_SDK_MEETINGS: !Ref UseChimeSDKMeetings
@@ -68,7 +66,6 @@ Globals:
         MEDIA_PIPELINES_CONTROL_REGION: !Ref MediaPipelinesControlRegion
         USE_CHIME_SDK_MEDIA_PIPELINES: !Ref UseChimeSDKMediaPipelines
         CHIME_SDK_MEDIA_PIPELINES_ENDPOINT: !Ref ChimeSDKMediaPipelinesEndpoint
-        BROWSER_EVENT_INGESTION_LOG_GROUP_NAME: !Ref ChimeBrowserEventIngestionLogs
         AWS_ACCOUNT_ID: !Sub "${AWS::AccountId}"
 Resources:
 
@@ -108,41 +105,6 @@ Resources:
         - Ref: ChimeSdkStopTranscriptionLambdaRole
         - Ref: ChimeSdkStartCaptureLambdaRole
         - Ref: ChimeSdkEndCaptureLambdaRole
-  ChimeMessagingAccessPolicy:
-    Type: AWS::IAM::Policy
-    Condition: ShouldDeployFetchCredentialLambda
-    Properties:
-      PolicyName: ChimeMeetingsAccess
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - 'chime:Connect'
-              - 'chime:GetMessagingSessionEndpoint'
-            Resource: '*'
-      Roles:
-        - Ref: ChimeSdkBrowserFetchCredentialsLambdaRole
-  CloudWatchAccessPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: CloudWatchAccess
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - 'logs:CreateLogStream'
-              - 'logs:PutLogEvents'
-              - 'logs:DescribeLogStreams'
-            Resource: '*'
-      Roles:
-        - Ref: ChimeSdkBrowserLogsLambdaRole
-        - Ref: ChimeSdkBrowserMeetingEventLogsLambdaRole
-        - Ref: ChimeSdkBrowserCreateLogStreamLambdaRole
-        - Ref: ChimeSdkBrowserCreateBrowserEventLogStreamLambdaRole
-        - Ref: ChimeSdkBrowserEventIngestionLogsLambdaRole
-        - Ref: ChimeSdkBrowserEventIngestionLogStreamLambdaRole
   Meetings:
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
