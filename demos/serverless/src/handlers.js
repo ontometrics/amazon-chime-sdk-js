@@ -321,16 +321,31 @@ exports.start_capture = async (event, context) => {
     SourceType: "ChimeSdkMeeting",
     SourceArn: `arn:aws:chime::${AWS_ACCOUNT_ID}:meeting:${meeting.Meeting.MeetingId}`,
     SinkType: "S3Bucket",
-    SinkArn: captureS3Destination,
+    SinkArn: captureS3Destination
   };
+  if (event.queryStringParameters.captureRequest) {
+    let captureRequestParams = JSON.parse(event.queryStringParameters.captureRequest)
+    let captureSpeakerVideo = captureRequestParams.hasOwnProperty("record") ? captureRequestParams.record : 'false'
+    mediaCaptureRequest.ArtifactsConfiguration = {
+      Audio: {
+        MuxType: captureSpeakerVideo === 'true' ? "AudioWithActiveSpeakerVideo" : "AudioOnly"
+      },
+      Content: {
+        State: "Disabled"
+      },
+      Video: {
+        State: "Disabled"
+      }
+    }
+  }
   console.log("Creating new media capture pipeline: ", mediaCaptureRequest)
+
   pipelineInfo = await getClientForMediaCapturePipelines().createMediaCapturePipeline(mediaCaptureRequest).promise();
 
-  await putCapturePipeline(event.queryStringParameters.title, pipelineInfo)
   console.log("Successfully created media capture pipeline: ", pipelineInfo);
 
   const mediaConcatenationRequest = {
-    Sinks: [{Type: "S3Bucket", S3BucketSinkConfiguration: {Destination: `${captureS3Destination}processed/`}}],
+    Sinks: [{Type: "S3Bucket", S3BucketSinkConfiguration: {Destination: captureS3Destination}}],
     Sources: [
       {
         Type: "MediaCapturePipeline",
@@ -341,7 +356,7 @@ exports.start_capture = async (event, context) => {
               Audio: {State: "Enabled"}, // audio from all attendees, plus the active speaker’s video
               Video: {State: "Disabled"}, //  content share streams and video streams
               TranscriptionMessages: {State: "Enabled"},
-              MeetingEvents: {State: "Enabled"},
+              MeetingEvents: {State: "Disabled"},
               Content: {State: "Disabled"},
               DataChannel: {State: "Disabled"},
               CompositedVideo: {State: "Disabled"}
@@ -355,7 +370,17 @@ exports.start_capture = async (event, context) => {
 
   console.log("Successfully created media concatenation pipeline: ", pipelineConcatenationInfo);
 
-  return response(201, 'application/json', JSON.stringify(pipelineInfo));
+  await putCapturePipeline(event.queryStringParameters.title, pipelineInfo, pipelineConcatenationInfo)
+
+  console.log("Successfully saved pipeline info on meetings table", pipelineConcatenationInfo);
+
+  const info = {
+    meetingId: meeting.Meeting.MeetingId,
+    capturePipelineId: pipelineInfo.MediaCapturePipeline.MediaPipelineId,
+    concatenationPipelineId: pipelineConcatenationInfo.MediaConcatenationPipeline.MediaPipelineId
+  }
+
+  return response(201, 'application/json', JSON.stringify(info));
 };
 
 exports.end_capture = async (event, context) => {
@@ -505,16 +530,17 @@ async function getCapturePipeline(title) {
   return result.Item && result.Item.CaptureData ? JSON.parse(result.Item.CaptureData.S) : null;
 }
 
-// Adds meeting capture data to the meeting table
-async function putCapturePipeline(title, capture) {
+// Adds meeting capture and concatenation data to the meeting table
+async function putCapturePipeline(title, capture, concatenation) {
   await ddb.updateItem({
     TableName: MEETINGS_TABLE_NAME,
     Key: {
       'Title': { S: title }
     },
-    UpdateExpression: "SET CaptureData = :capture",
+    UpdateExpression: "SET CaptureData = :capture, SET ConcatenationData = :concatenation",
     ExpressionAttributeValues: {
-      ":capture": { S: JSON.stringify(capture) }
+      ":capture": { S: JSON.stringify(capture) },
+      ":concatenation": { S: JSON.stringify(concatenation)}
     }
   }).promise()
 }
