@@ -239,6 +239,14 @@ Resources:
             Principal:
               Service:
                 - chimeMediaPipelinesServicePrincipal
+  MediaPipelineServiceLinkRole:
+    Type: AWS::IAM::ServiceLinkedRole
+    Properties:
+      AWSServiceName: mediapipelines.chime.amazonaws.com
+  TranscriptionServiceLinkRole:
+    Type: AWS::IAM::ServiceLinkedRole
+    Properties:
+      AWSServiceName: transcription.chime.amazonaws.com
 
   ChimeSdkIndexLambda:
     Type: 'AWS::Serverless::Function'
