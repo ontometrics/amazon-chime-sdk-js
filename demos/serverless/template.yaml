@@ -208,7 +208,10 @@ Resources:
   ChimeArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Join ["-", [!Ref ChimeMediaCaptureS3BucketPrefix, !Ref MediaPipelinesControlRegion]]
+      BucketName: !Join
+        - '-'
+        - - !Ref ChimeMediaCaptureS3BucketPrefix
+          - !Ref MediaPipelinesControlRegion
       AccessControl: Private
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
