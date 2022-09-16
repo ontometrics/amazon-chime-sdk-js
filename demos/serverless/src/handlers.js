@@ -11,7 +11,7 @@ const ddb = new AWS.DynamoDB();
 
 // Set the AWS SDK Chime endpoint. The Chime endpoint is https://service.chime.aws.amazon.com.
 const endpoint = process.env.CHIME_ENDPOINT;
-const currentRegion = process.env.REGION;
+const controlRegion = process.env.CONTROL_REGION;
 const useChimeSDKMeetings = process.env.USE_CHIME_SDK_MEETINGS;
 const chimeSDKMeetingsEndpoint = process.env.CHIME_SDK_MEETINGS_ENDPOINT;
 const mediaPipelinesControlRegion = process.env.MEDIA_PIPELINES_CONTROL_REGION;
@@ -26,7 +26,7 @@ const chime = new AWS.Chime({ region: 'us-east-1' });
 // Set the AWS SDK Chime endpoint. The Chime endpoint is https://service.chime.aws.amazon.com.
 chime.endpoint = new AWS.Endpoint(endpoint);
 
-const chimeSDKMeetings = new AWS.ChimeSDKMeetings({ region: currentRegion });
+const chimeSDKMeetings = new AWS.ChimeSDKMeetings({ region: controlRegion });
 if(chimeSDKMeetingsEndpoint != 'https://service.chime.aws.amazon.com' && useChimeSDKMeetings === 'true'){
   chimeSDKMeetings.endpoint = new AWS.Endpoint(chimeSDKMeetingsEndpoint);
 }

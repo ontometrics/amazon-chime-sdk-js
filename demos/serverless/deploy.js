@@ -4,6 +4,7 @@ const path = require("path");
 
 // Parameters
 let region = 'us-east-1';
+let controlRegion = 'us-east-1';
 let useChimeSDKMeetings = true;
 let bucket = ``;
 let artifactBucket = ``;
@@ -60,7 +61,8 @@ const supportedMediaPipelinesControlRegions = [
 
 function usage() {
   console.log(`Usage: deploy.sh [-r region] [-b bucket] [-s stack] [-a application] [-e]`);
-  console.log(`  -r, --region                         Target region, default '${region}'`);
+  console.log(`  -r, --region                         Stack region, default '${region}'`);
+  console.log(`  -cr, --control-region                Amazon Chime SDK Meetings control region, default '${controlRegion}'`);
   console.log(`  -u, --use-chime-sdk-meetings         Flag to switch between chime and ChimeSDKMeetings client, default '${useChimeSDKMeetings}'`);
   console.log(`  -b, --s3-bucket                      S3 bucket for deployment, required`);
   console.log(`  -s, --stack-name                     CloudFormation stack name, required`);
@@ -112,6 +114,9 @@ function parseArgs() {
         break;
       case '-r': case '--region':
         region = getArgOrExit(++i, args)
+        break;
+      case '-cr': case '--control-region':
+        controlRegion = getArgOrExit(++i, args)
         break;
       case '-u': case '--use-chime-sdk-meetings':
         useChimeSDKMeetings = getArgOrExit(++i, args)
@@ -221,78 +226,78 @@ function ensureTools() {
   spawnOrFail('npm', ['install']);
 }
 
-function createCaptureS3Buckets(bucketPrefix, regions) {
-  console.log(`Creating S3 buckets for media capture pipelines artifacts.  Bucket prefix: ${bucketPrefix} Regions:[${regions}]`);
-  // const lifecycleConfiguration = JSON.stringify({
-  //   "Rules": [{
-  //     "ID": "Delete artifacts after 1 day",
-  //     "Expiration": {"Days": 1},
-  //     "Status": "Enabled",
-  //     "Prefix": "",
-  //   }]
-  // });
-  // fs.writeFileSync('build/lifecycle_configuration.json', lifecycleConfiguration, {encoding: 'utf8', flag: 'w'});
-  for (bucketRegion of regions) {
-    const bucketName = `${bucketPrefix}-${bucketRegion}`;
-    const bucketPolicy = JSON.stringify({
-      "Id": "AWSChimeMediaCaptureBucketPolicy",
-      "Version": "2012-10-17",
-      "Statement": [{
-        "Sid": "AWSChimeMediaCaptureBucketPolicy",
-        "Action": [
-          "s3:PutObject",
-          "s3:PutObjectAcl",
-          "s3:GetObject",
-          "s3:ListBucket"
-        ],
-        "Effect": "Allow",
-        "Resource": `arn:aws:s3:::${bucketName}/*`,
-        "Principal": {
-          "Service": [
-            chimeMediaPipelinesServicePrincipal
-          ]
-        }
-      }]
-    });
-
-    fs.writeFileSync('build/bucket_policy.json', bucketPolicy, {encoding: 'utf8', flag: 'w'});
-
-    const s3Api = spawnSync('aws', ['s3api', 'head-bucket', '--bucket', `${bucketName}`, '--region', `${bucketRegion}`]);
-    if (s3Api.status !== 0) {
-      if (bucketRegion === 'us-east-1') {
-        spawnOrFail('aws', ['s3api', 'create-bucket', '--bucket', bucketName, '--region', bucketRegion], null, !disablePrintingLogs);
-      } else {
-        spawnOrFail('aws', ['s3api', 'create-bucket', '--bucket', bucketName, '--region', bucketRegion, '--create-bucket-configuration', `LocationConstraint=${bucketRegion}`], null, !disablePrintingLogs);
-      }
-      spawnOrFail('aws', ['s3api', 'put-bucket-policy', '--bucket', bucketName, '--region', bucketRegion, '--policy', 'file://build/bucket_policy.json']);
-      // spawnOrFail('aws', ['s3api', 'put-bucket-lifecycle-configuration', '--bucket', bucketName, '--region', bucketRegion, '--lifecycle-configuration', 'file://build/lifecycle_configuration.json']);
-    }
-  }
-}
+// function createCaptureS3Buckets(bucketPrefix, regions) {
+//   console.log(`Creating S3 buckets for media capture pipelines artifacts.  Bucket prefix: ${bucketPrefix} Regions:[${regions}]`);
+//   // const lifecycleConfiguration = JSON.stringify({
+//   //   "Rules": [{
+//   //     "ID": "Delete artifacts after 1 day",
+//   //     "Expiration": {"Days": 1},
+//   //     "Status": "Enabled",
+//   //     "Prefix": "",
+//   //   }]
+//   // });
+//   // fs.writeFileSync('build/lifecycle_configuration.json', lifecycleConfiguration, {encoding: 'utf8', flag: 'w'});
+//   for (bucketRegion of regions) {
+//     const bucketName = `${bucketPrefix}-${bucketRegion}`;
+//     const bucketPolicy = JSON.stringify({
+//       "Id": "AWSChimeMediaCaptureBucketPolicy",
+//       "Version": "2012-10-17",
+//       "Statement": [{
+//         "Sid": "AWSChimeMediaCaptureBucketPolicy",
+//         "Action": [
+//           "s3:PutObject",
+//           "s3:PutObjectAcl",
+//           "s3:GetObject",
+//           "s3:ListBucket"
+//         ],
+//         "Effect": "Allow",
+//         "Resource": `arn:aws:s3:::${bucketName}/*`,
+//         "Principal": {
+//           "Service": [
+//             chimeMediaPipelinesServicePrincipal
+//           ]
+//         }
+//       }]
+//     });
+//
+//     fs.writeFileSync('build/bucket_policy.json', bucketPolicy, {encoding: 'utf8', flag: 'w'});
+//
+//     const s3Api = spawnSync('aws', ['s3api', 'head-bucket', '--bucket', `${bucketName}`, '--region', `${bucketRegion}`]);
+//     if (s3Api.status !== 0) {
+//       if (bucketRegion === 'us-east-1') {
+//         spawnOrFail('aws', ['s3api', 'create-bucket', '--bucket', bucketName, '--region', bucketRegion], null, !disablePrintingLogs);
+//       } else {
+//         spawnOrFail('aws', ['s3api', 'create-bucket', '--bucket', bucketName, '--region', bucketRegion, '--create-bucket-configuration', `LocationConstraint=${bucketRegion}`], null, !disablePrintingLogs);
+//       }
+//       spawnOrFail('aws', ['s3api', 'put-bucket-policy', '--bucket', bucketName, '--region', bucketRegion, '--policy', 'file://build/bucket_policy.json']);
+//       // spawnOrFail('aws', ['s3api', 'put-bucket-lifecycle-configuration', '--bucket', bucketName, '--region', bucketRegion, '--lifecycle-configuration', 'file://build/lifecycle_configuration.json']);
+//     }
+//   }
+// }
 
 function copyAssets() {
   fs.copySync('../browser/dist/speech.mp3', 'src/speech.mp3');
   fs.copySync('../browser/dist/speech_stereo.mp3', 'src/speech_stereo.mp3');
 }
 
-function ensureRegion() {
+function ensureControlRegion() {
   if (useChimeSDKMeetings === 'true') {
-    if (!(new Set(supportedControlRegions)).has(region)) {
-      console.error(`Amazon Chime SDK does not support ${region} (control region). Specify one of the following regions: ${supportedControlRegions.join(', ')}.\nSee https://docs.aws.amazon.com/chime/latest/dg/sdk-available-regions.html for more information.`);
+    if (!(new Set(supportedControlRegions)).has(controlRegion)) {
+      console.error(`Amazon Chime SDK does not support ${controlRegion} (control region). Specify one of the following regions: ${supportedControlRegions.join(', ')}.\nSee https://docs.aws.amazon.com/chime/latest/dg/sdk-available-regions.html for more information.`);
       process.exit(1);
     }
   }
 }
 
 function ensureMediaPipelinesRegion() {
-  if (useChimeSDKMediaPipelines === 'true' && !(new Set(supportedMediaPipelinesControlRegions)).has(region)) {
-      console.error(`Amazon Chime SDK Media Pipelines does not support ${region} (control region). Specify one of the following regions: ${supportedMediaPipelinesControlRegions.join(', ')}.\nSee https://docs.aws.amazon.com/chime-sdk/latest/dg/sdk-available-regions.html#sdk-media-pipelines for more information.`);
+  if (useChimeSDKMediaPipelines === 'true' && !(new Set(supportedMediaPipelinesControlRegions)).has(mediaPipelinesControlRegion)) {
+      console.error(`Amazon Chime SDK Media Pipelines does not support ${mediaPipelinesControlRegion} (control region). Specify one of the following regions: ${supportedMediaPipelinesControlRegions.join(', ')}.\nSee https://docs.aws.amazon.com/chime-sdk/latest/dg/sdk-available-regions.html#sdk-media-pipelines for more information.`);
       process.exit(1);
   }
 }
 
 parseArgs();
-ensureRegion();
+ensureControlRegion();
 ensureMediaPipelinesRegion();
 ensureTools();
 ensureApp(app);
@@ -301,7 +306,7 @@ if (!fs.existsSync('build')) {
   fs.mkdirSync('build');
 }
 
-console.log(`Using region ${region}, useChimeSDKMeetings ${useChimeSDKMeetings}, bucket ${bucket}, stack ${stack}, endpoint ${chimeEndpoint}, enable-termination-protection ${enableTerminationProtection}, disable-printing-logs ${disablePrintingLogs} service-principal ${chimeMediaPipelinesServicePrincipal}`);
+console.log(`Using region ${region}, controlRegion ${controlRegion}, useChimeSDKMeetings ${useChimeSDKMeetings}, bucket ${bucket}, stack ${stack}, endpoint ${chimeEndpoint}, enable-termination-protection ${enableTerminationProtection}, disable-printing-logs ${disablePrintingLogs} service-principal ${chimeMediaPipelinesServicePrincipal}`);
 ensureBucket();
 
 copyAssets();
@@ -311,10 +316,10 @@ spawnOrFail('sam', ['package', '--s3-bucket', `${bucket}`,
                     `--output-template-file`, `build/packaged.yaml`,
                     '--region',  `${region}`]);
 console.log('Deploying serverless application');
-let parameterOverrides = `Region=${region} UseChimeSDKMeetings=${useChimeSDKMeetings} UseEventBridge=${useEventBridge} ChimeEndpoint=${chimeEndpoint} ChimeServicePrincipal=${chimeMediaPipelinesServicePrincipal} ChimeSDKMeetingsEndpoint=${chimeSDKMeetingsEndpoint} ChimeSDKMediaPipelinesEndpoint=${chimeSDKMediaPipelinesEndpoint} UseChimeSDKMediaPipelines=${useChimeSDKMediaPipelines} MediaPipelinesControlRegion=${mediaPipelinesControlRegion}`
+let parameterOverrides = `ControlRegion=${controlRegion} UseChimeSDKMeetings=${useChimeSDKMeetings} UseEventBridge=${useEventBridge} ChimeEndpoint=${chimeEndpoint} ChimeServicePrincipal=${chimeMediaPipelinesServicePrincipal} ChimeSDKMeetingsEndpoint=${chimeSDKMeetingsEndpoint} ChimeSDKMediaPipelinesEndpoint=${chimeSDKMediaPipelinesEndpoint} UseChimeSDKMediaPipelines=${useChimeSDKMediaPipelines} MediaPipelinesControlRegion=${mediaPipelinesControlRegion}`
 if (app === 'meetingV2' && captureOutputPrefix) {
     parameterOverrides += ` ChimeMediaCaptureS3BucketPrefix=${captureOutputPrefix}`;
-    createCaptureS3Buckets(captureOutputPrefix, mediaCaptureRegions);
+    // createCaptureS3Buckets(captureOutputPrefix, mediaCaptureRegions);
 } else if (app === 'messagingSession') {
     parameterOverrides += ` UseFetchCredentialLambda=true`
 }
