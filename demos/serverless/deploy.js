@@ -16,7 +16,6 @@ let disablePrintingLogs = false;
 let chimeEndpoint = 'https://service.chime.aws.amazon.com';
 let chimeSDKMeetingsEndpoint = 'https://service.chime.aws.amazon.com';
 let chimeMediaPipelinesServicePrincipal = 'mediapipelines.chime.amazonaws.com'
-let captureOutputPrefix = ''
 let mediaCaptureRegions = [
     "ap-northeast-1",
     "ap-northeast-2",
@@ -72,7 +71,7 @@ function usage() {
   console.log(`  -p, --service-principal              Service principal for media pipelines related resources, default is '${chimeMediaPipelinesServicePrincipal}'`)
   console.log(`  -t, --enable-termination-protection  Enable termination protection for the Cloudformation stack, default is false`);
   console.log(`  -l, --disable-printing-logs          Disable printing logs`);
-  console.log(`  -o, --capture-output-prefix          Prefix for S3 bucket name`);
+  // console.log(`  -o, --capture-output-prefix          Prefix for S3 bucket name`);
   console.log(`  -i, --opt-in-regions                 Comma separated list of additional opt-in regions to enable for media capture`);
   console.log(`  -m, --chime-sdk-meetings-endpoint    AWS SDK Chime Meetings endpoint`);
   console.log(`  --chime-sdk-media-pipelines-region   Media pipelines control region, default '${mediaPipelinesControlRegion}'`);
@@ -145,9 +144,9 @@ function parseArgs() {
       case '-l': case '--disable-printing-logs':
         disablePrintingLogs = true;
         break;
-      case '-o': case '--capture-output-prefix':
-        captureOutputPrefix = getArgOrExit(++i, args);
-        break;
+      // case '-o': case '--capture-output-prefix':
+      //   captureOutputPrefix = getArgOrExit(++i, args);
+      //   break;
       case '-i': case '--opt-in-regions':
         optInRegions = getArgOrExit(++i, args);
         mediaCaptureRegions = mediaCaptureRegions.concat(optInRegions.split(','));
@@ -309,20 +308,20 @@ if (!fs.existsSync('build')) {
 console.log(`Using region ${region}, controlRegion ${controlRegion}, useChimeSDKMeetings ${useChimeSDKMeetings}, bucket ${bucket}, stack ${stack}, endpoint ${chimeEndpoint}, enable-termination-protection ${enableTerminationProtection}, disable-printing-logs ${disablePrintingLogs} service-principal ${chimeMediaPipelinesServicePrincipal}`);
 ensureBucket();
 
-copyAssets();
-fs.copySync(appHtml(app), 'src/index.html');
+// copyAssets();
+// fs.copySync(appHtml(app), 'src/index.html');
 spawnOrFail('npm', ['install'], {cwd: path.join(__dirname, 'src')});
 spawnOrFail('sam', ['package', '--s3-bucket', `${bucket}`,
                     `--output-template-file`, `build/packaged.yaml`,
                     '--region',  `${region}`]);
 console.log('Deploying serverless application');
 let parameterOverrides = `ControlRegion=${controlRegion} UseChimeSDKMeetings=${useChimeSDKMeetings} UseEventBridge=${useEventBridge} ChimeEndpoint=${chimeEndpoint} ChimeServicePrincipal=${chimeMediaPipelinesServicePrincipal} ChimeSDKMeetingsEndpoint=${chimeSDKMeetingsEndpoint} ChimeSDKMediaPipelinesEndpoint=${chimeSDKMediaPipelinesEndpoint} UseChimeSDKMediaPipelines=${useChimeSDKMediaPipelines} MediaPipelinesControlRegion=${mediaPipelinesControlRegion}`
-if (app === 'meetingV2' && captureOutputPrefix) {
-    parameterOverrides += ` ChimeMediaCaptureS3BucketPrefix=${captureOutputPrefix}`;
-    // createCaptureS3Buckets(captureOutputPrefix, mediaCaptureRegions);
-} else if (app === 'messagingSession') {
-    parameterOverrides += ` UseFetchCredentialLambda=true`
-}
+// if (app === 'meetingV2' && captureOutputPrefix) {
+//     parameterOverrides += ` ChimeMediaCaptureS3Bucket=${captureOutputPrefix}`;
+//     createCaptureS3Buckets(captureOutputPrefix, mediaCaptureRegions);
+// } else if (app === 'messagingSession') {
+//     parameterOverrides += ` UseFetchCredentialLambda=true`
+// }
 spawnOrFail('sam', ['deploy', '--template-file', './build/packaged.yaml', '--stack-name', `${stack}`,
                     '--parameter-overrides', parameterOverrides,
                     '--capabilities', 'CAPABILITY_IAM', '--region', `${region}`, '--no-fail-on-empty-changeset'], null, !disablePrintingLogs);

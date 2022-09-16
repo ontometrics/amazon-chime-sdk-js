@@ -62,7 +62,7 @@ const {
   SQS_QUEUE_ARN,
   USE_EVENT_BRIDGE,
   BROWSER_EVENT_INGESTION_LOG_GROUP_NAME,
-  CAPTURE_S3_DESTINATION_PREFIX,
+  CAPTURE_S3_DESTINATION,
   AWS_ACCOUNT_ID,
 } = process.env;
 
@@ -316,7 +316,7 @@ exports.start_capture = async (event, context) => {
   const meeting = await getMeeting(event.queryStringParameters.title);
   meetingRegion = meeting.Meeting.MediaRegion;
 
-  let captureS3Destination = `arn:aws:s3:::${CAPTURE_S3_DESTINATION_PREFIX}-${meetingRegion}/${meeting.Meeting.MeetingId}/`
+  let captureS3Destination = `arn:aws:s3:::${CAPTURE_S3_DESTINATION}/${meeting.Meeting.MeetingId}/`
   const mediaCaptureRequest = {
     SourceType: "ChimeSdkMeeting",
     SourceArn: `arn:aws:chime::${AWS_ACCOUNT_ID}:meeting:${meeting.Meeting.MeetingId}`,
