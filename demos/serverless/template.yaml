@@ -191,7 +191,7 @@ Resources:
                 - /*
             Principal:
               Service:
-                - chimeMediaPipelinesServicePrincipal
+                - mediapipelines.chime.amazonaws.com
   MediaPipelineServiceLinkRole:
     Type: AWS::IAM::ServiceLinkedRole
     Properties:
