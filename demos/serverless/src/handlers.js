@@ -358,7 +358,7 @@ exports.start_capture = async (event, context) => {
               Audio: {State: "Enabled"}, // audio from all attendees, plus the active speaker’s video
               Video: {State: "Disabled"}, //  content share streams and video streams
               TranscriptionMessages: {State: "Enabled"},
-              MeetingEvents: {State: "Disabled"},
+              MeetingEvents: {State: "Enabled"},
               Content: {State: "Disabled"},
               DataChannel: {State: "Disabled"},
               CompositedVideo: {State: "Disabled"}
@@ -539,7 +539,7 @@ async function putCapturePipeline(title, capture, concatenation) {
     Key: {
       'Title': { S: title }
     },
-    UpdateExpression: "SET CaptureData = :capture, SET ConcatenationData = :concatenation",
+    UpdateExpression: "SET CaptureData = :capture, ConcatenationData = :concatenation",
     ExpressionAttributeValues: {
       ":capture": { S: JSON.stringify(capture) },
       ":concatenation": { S: JSON.stringify(concatenation)}
