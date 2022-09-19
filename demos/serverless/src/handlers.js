@@ -325,20 +325,22 @@ exports.start_capture = async (event, context) => {
   };
   if (event.queryStringParameters.captureRequest) {
     let captureRequestParams = JSON.parse(event.queryStringParameters.captureRequest)
-    let captureSpeakerVideo = captureRequestParams.hasOwnProperty("record") ? captureRequestParams.record : 'false'
-    mediaCaptureRequest.ArtifactsConfiguration = {
-      Audio: {
-        MuxType: captureSpeakerVideo === 'true' ? "AudioWithActiveSpeakerVideo" : "AudioOnly"
-      },
-      Content: {
-        State: "Disabled"
-      },
-      Video: {
-        State: "Disabled"
+    let captureSpeakerVideo = captureRequestParams.hasOwnProperty("record") ? captureRequestParams.record : false
+    mediaCaptureRequest.ChimeSdkMeetingConfiguration = {
+      ArtifactsConfiguration: {
+        Audio: {
+          MuxType: captureSpeakerVideo === true ? "AudioWithActiveSpeakerVideo" : "AudioOnly"
+        },
+        Content: {
+          State: "Disabled"
+        },
+        Video: {
+          State: "Disabled"
+        }
       }
     }
   }
-  console.log("Creating new media capture pipeline: ", mediaCaptureRequest)
+  console.log("Creating new media capture pipeline: ", JSON.stringify(mediaCaptureRequest))
 
   pipelineInfo = await getClientForMediaCapturePipelines().createMediaCapturePipeline(mediaCaptureRequest).promise();
 

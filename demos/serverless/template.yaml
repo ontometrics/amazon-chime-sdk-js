@@ -26,7 +26,7 @@ Parameters:
     Type: String
   ChimeSDKMeetingsEndpoint:
     Description: The AWS Chime SDK Meetings endpoint
-    Default: "https://service.chime.aws.amazon.com"
+    Default: "https://meetings-chime.us-east-1.amazonaws.com"
     Type: String
   UseFetchCredentialLambda:
     Description: Set to true to deploy a lambda to return AWS credentials with limited privileges. This should be disabled in most demo.
